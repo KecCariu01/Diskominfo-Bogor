@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Table, Select, message, Card, Row, Col } from "antd";
+import { Table, Select, message, Card, Row, Col, Input } from "antd";
 import {
   PieChart,
   Pie,
@@ -22,25 +22,27 @@ export default function AdminDashboard() {
   const [chartData, setChartData] = useState([]);
   const [updatingStatus, setUpdatingStatus] = useState({}); // Track which submission is being updated
   const [refreshing, setRefreshing] = useState(false); // Track refresh loading state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState("newest");
+  const [filteredResults, setFilteredResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const COLORS = ["#ffc107", "#1890ff", "#52c41a", "#ff4d4f"];
 
   useEffect(() => {
-    // Check if admin is logged in
-    const checkAuth = () => {
-      const isLoggedIn = localStorage.getItem("adminLoggedIn");
-      console.log("Auth check - isLoggedIn:", isLoggedIn); // Debug log
-      if (!isLoggedIn) {
-        console.log("Not logged in, redirecting to login"); // Debug log
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("/api/admin/me", { cache: "no-store" });
+        if (!res.ok) {
+          router.push("/admin/login");
+          return;
+        }
+        await fetchSubmissions();
+      } catch (e) {
         router.push("/admin/login");
-        return;
       }
-      console.log("Logged in, fetching submissions"); // Debug log
-      fetchSubmissions();
     };
-
-    // Add a small delay to ensure localStorage is available
-    setTimeout(checkAuth, 100);
+    checkAuth();
   }, [router]);
 
   const fetchSubmissions = async (showLoading = false) => {
@@ -190,9 +192,37 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminLoggedIn");
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/admin/logout", { method: "POST" });
+    } catch (_) {}
     router.push("/admin/login");
+  };
+
+  const runSearch = async () => {
+    setSearchLoading(true);
+    try {
+      const ts = Date.now();
+      const params = new URLSearchParams();
+      if (searchQuery) params.set("q", searchQuery);
+      if (sortOrder) params.set("sort", sortOrder);
+      params.set("_", String(ts));
+      const res = await fetch(`/api/admin/submissions?${params.toString()}`, {
+        cache: "no-store",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        message.error("Gagal mengambil hasil pencarian");
+        setFilteredResults([]);
+        return;
+      }
+      setFilteredResults(data);
+    } catch (e) {
+      message.error("Terjadi kesalahan jaringan");
+    } finally {
+      setSearchLoading(false);
+    }
   };
 
   const columns = [
@@ -371,7 +401,7 @@ export default function AdminDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                Admin Dashboard
+                Admin Dashboard Cariu
               </h1>
               <p className="text-sm sm:text-base text-gray-600 mt-1">
                 {loading
@@ -810,6 +840,67 @@ export default function AdminDashboard() {
                     Memperbarui status...
                   </p>
                 </div>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Search & Sort below the list */}
+        <Card title="Cari & Urutkan" className="mt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Input
+              placeholder="Cari kode tracking / nama / jenis layanan"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onPressEnter={runSearch}
+              allowClear
+            />
+            <Select value={sortOrder} onChange={setSortOrder}>
+              <Option value="newest">Terbaru</Option>
+              <Option value="oldest">Terlama</Option>
+              <Option value="name_asc">Nama A-Z</Option>
+              <Option value="name_desc">Nama Z-A</Option>
+              <Option value="status_asc">Status A-Z</Option>
+              <Option value="status_desc">Status Z-A</Option>
+            </Select>
+            <button
+              onClick={runSearch}
+              disabled={searchLoading}
+              className={`bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-4 py-2 rounded-lg`}
+            >
+              {searchLoading ? "Mencari..." : "Terapkan"}
+            </button>
+          </div>
+
+          <div className="mt-4">
+            {searchLoading ? (
+              <div className="text-gray-600 text-sm">Memuat hasil...</div>
+            ) : filteredResults.length === 0 ? (
+              <div className="text-gray-500 text-sm">Tidak ada hasil</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-100 text-left">
+                      <th className="p-2">Kode</th>
+                      <th className="p-2">Nama</th>
+                      <th className="p-2">Jenis Layanan</th>
+                      <th className="p-2">Status</th>
+                      <th className="p-2">Dibuat</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredResults.map((s) => (
+                      <tr key={s.id} className="border-b">
+                        <td className="p-2 font-mono break-all">{s.tracking_code}</td>
+                        <td className="p-2">{s.nama}</td>
+                        <td className="p-2">{s.jenis_layanan}</td>
+                        <td className="p-2">{getStatusText(s.status)}</td>
+                        <td className="p-2">{s.created_at ? new Date(s.created_at).toLocaleString("id-ID") : "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

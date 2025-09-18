@@ -7,11 +7,22 @@ import { message } from "antd";
 export default function AdminLogin() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    username: "",
+    email: "",
     password: "",
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const generateCaptcha = (length = 6) => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    let result = "";
+    for (let i = 0; i < length; i++) {
+      result += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return result;
+  };
+  const [captchaText, setCaptchaText] = useState(() => generateCaptcha());
+  const [captchaInput, setCaptchaInput] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,8 +38,14 @@ export default function AdminLogin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.username || !formData.password) {
-      setErrors({ submit: "Username dan password wajib diisi" });
+    if (!formData.email || !formData.password) {
+      setErrors({ submit: "Email dan password wajib diisi" });
+      return;
+    }
+
+    // Validate captcha (case-insensitive)
+    if (captchaInput.trim().toLowerCase() !== captchaText.toLowerCase()) {
+      setErrors({ submit: "Captcha tidak sesuai" });
       return;
     }
 
@@ -41,26 +58,23 @@ export default function AdminLogin() {
     setErrors({}); // Clear previous errors
 
     try {
-      // Simulate network delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Simple authentication for workshop - in production use proper auth
-      if (formData.username === "admin" && formData.password === "admin123") {
-        // Set session (in production use proper session management)
-        localStorage.setItem("adminLoggedIn", "true");
-        console.log("Login successful, localStorage set"); // Debug log
-        
-        // Show success message
-        message.success("Login berhasil! Mengalihkan ke dashboard...");
-        
-        // Small delay to show the success message
-        setTimeout(() => {
-          router.push("/admin");
-        }, 1000);
-      } else {
-        setErrors({ submit: "Username atau password salah" });
-        setIsSubmitting(false); // Reset loading state on error
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setErrors({ submit: err.message || "Email atau password salah" });
+        setIsSubmitting(false);
+        return;
       }
+
+      message.success("Login berhasil! Mengalihkan ke dashboard...");
+      setTimeout(() => {
+        router.push("/admin");
+      }, 800);
     } catch (error) {
       console.error("Login error:", error);
       setErrors({ submit: "Terjadi kesalahan" });
@@ -73,7 +87,7 @@ export default function AdminLogin() {
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Admin Login
+            Admin Login Cariu
           </h1>
           <p className="text-gray-600">
             Masuk ke panel administrasi
@@ -84,19 +98,19 @@ export default function AdminLogin() {
           
           <div>
             <label
-              htmlFor="username"
+              htmlFor="email"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Username
+              Email
             </label>
             <input
-              type="text"
-              id="username"
-              name="username"
-              value={formData.username}
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-black transition duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Masukkan username"
+              placeholder="Masukkan email"
             />
           </div>
 
@@ -107,15 +121,38 @@ export default function AdminLogin() {
             >
               Password
             </label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-black transition duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Masukkan password"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full pr-10 px-3 py-2 border border-gray-300 rounded-lg text-black transition duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Masukkan password"
+              />
+              <button
+                type="button"
+                aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  // Eye-off icon
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-10-8-10-8a18 18 0 014.56-5.68M9.9 4.24A10.94 10.94 0 0112 4c7 0 10 8 10 8a18 18 0 01-3.16 4.19" />
+                    <path d="M1 1l22 22" />
+                  </svg>
+                ) : (
+                  // Eye icon
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s3-8 11-8 11 8 11 8-3 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           {errors.submit && (
@@ -123,6 +160,42 @@ export default function AdminLogin() {
               <p className="text-sm text-red-600">{errors.submit}</p>
             </div>
           )}
+
+          {/* Captcha alfanumerik */}
+          <div>
+            <label
+              htmlFor="captcha"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Captcha
+            </label>
+            <div className="flex items-center space-x-3 mb-2">
+              <div className="px-3 py-2 bg-gray-100 rounded border text-sm font-mono select-none tracking-widest">
+                {captchaText}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCaptchaText(generateCaptcha());
+                  setCaptchaInput("");
+                }}
+                className="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm"
+              >
+                Ganti
+              </button>
+            </div>
+            <input
+              type="text"
+              id="captcha"
+              name="captcha"
+              value={captchaInput}
+              onChange={(e) => setCaptchaInput(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-black transition duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Masukkan captcha di atas"
+              autoComplete="off"
+              inputMode="text"
+            />
+          </div>
 
           <button
             type="submit"
@@ -155,7 +228,7 @@ export default function AdminLogin() {
 
         <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <p className="text-sm text-yellow-800">
-            <strong>Workshop Demo:</strong> Username: admin, Password: admin123
+            Gunakan email dan password terdaftar
           </p>
         </div>
       </div>

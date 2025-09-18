@@ -8,10 +8,10 @@ export default function Home() {
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Layanan Publik Mobile
+            Layanan Cariu Mobile
           </h1>
           <p className="text-gray-600">
-            Sistem Layanan Publik Mobile Responsive
+            Sistem Layanan Cariu Mobile Responsive
           </p>
         </div>
 
@@ -33,7 +33,7 @@ export default function Home() {
                 d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
               />
             </svg>
-            Login Admin
+            Login Admin Cariu
           </Link>
 
           <Link
@@ -53,14 +53,14 @@ export default function Home() {
                 d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
               />
             </svg>
-            Layanan Masyarakat
+            Layanan Masyarakat Cariu
           </Link>
 
         </div>
 
         <div className="mt-8 text-center text-sm text-gray-500">
-          <p>© 2024 Layanan Publik Mobile</p>
-          <p className="mt-1">Workshop-Friendly System</p>
+          <p>© 2025 Layanan Publik Cariu Mobile</p>
+          <p className="mt-1">Workshop-Samsul System</p>
         </div>
 
       </div>
